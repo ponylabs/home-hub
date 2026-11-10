@@ -10,6 +10,8 @@ export const changesSchema = z.object({
   position: z.number().int().min(0).max(100).optional(),
 }).strict().refine((v) => Object.keys(v).length > 0, '至少指定一项控制参数');
 export const commandSchema = z.object({ deviceId: z.string().min(1).max(200), changes: changesSchema }).strict();
+export const xiaomiImportSchema = z.object({ entityIds: z.array(z.string().min(1).max(200)).min(1).max(100)
+  .refine((ids) => new Set(ids).size === ids.length) }).strict();
 export const addDeviceSchema = z.object({
   name: z.string().trim().min(1).max(40),
   room: z.string().trim().min(1).max(20),

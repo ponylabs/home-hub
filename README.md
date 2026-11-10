@@ -22,12 +22,14 @@ npm run dev
 - 预置场景及保存当前状态的自定义场景；操作记录区分来源和成功、失败、待确认结果。
 - 本地有限指令解析；配置支持工具调用的 Chat Completions 兼容模型后启用自然语言对话。
 - Home Assistant 桥接适配器、MCP 工具入口；网页与 Agent 共用能力校验和控制服务。
+- 小米 / 米家接入向导：从 Home Assistant 官方 Xiaomi Home 集成发现设备、选择导入、保留房间与型号，并同步已接入设备。
 
 首版完成无硬件运行链路。真实 Home Assistant、真实模型服务尚未联调；模拟品牌与协议名不代表已实现原生 Zigbee/Matter/蓝牙配对。示例户型不对应用户真实住宅。
 
 ## 项目入口
 
 - [开发说明](docs/development.md)：生产运行、模型/中枢配置、MCP 接入与备份。
+- [接入小米设备](docs/cookbook/xiaomi-home.md)：部署前提、米家授权、设备选择与故障排查。
 - [架构与后续阶段](docs/architecture.md)：模块边界、控制保证和当前限制。
 - [测试说明](docs/testing.md)：检查命令与验证边界。
 - [样式约定](docs/web-styling.md)、[形状规范](docs/ui-radius.md)、[Agent 约定](AGENTS.md)与[来源许可](THIRD_PARTY_NOTICES.md)。

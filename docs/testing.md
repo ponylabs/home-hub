@@ -42,4 +42,6 @@ check 依次运行业务测试、类型检查与生产构建、Harness 检查和
 
 真实 HA、真实模型、原生无线协议、多实例、跨家庭权限、长期故障恢复、全部浏览器和跨会话 Agent 行为未验证。模板检查不证明 Agent 必然读取或遵循规则。
 
+小米接入回归见 [server/xiaomi.test.ts](../server/xiaomi.test.ts)：通过真实 HTTP 路由与 SQLite 验证来源筛选、选择变更、导入事务、元数据保留、统一控制、离线恢复及认证失败。HA 的模板与设备响应为测试替身；这些用例不证明米家账号授权、官方集成安装或真实设备控制已经联调。
+
 Harness 归档冻结仍使用可信基准：本地默认 HEAD，CI 使用 PR base 或 push before SHA。相关覆盖见 [Notes 规范](../.agents/notes/README.md)和[上游映射](upstream-mapping.md)。

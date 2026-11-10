@@ -56,6 +56,9 @@ export function buildApp(config: AppConfig) {
   app.post('/api/scenes', async (request, reply) => reply.status(201).send(hub.addScene(request.body)));
   app.post<{ Params: { id: string } }>('/api/scenes/:id/run', async (request) => hub.runScene(request.params.id));
   app.post('/api/connections/home-assistant/sync', async () => hub.sync());
+  app.post('/api/connections/xiaomi/discover', async () => hub.discoverXiaomi());
+  app.post('/api/connections/xiaomi/import', async (request) => hub.importXiaomi(request.body));
+  app.post('/api/connections/xiaomi/sync', async () => hub.syncXiaomi());
   app.post('/api/chat', async (request) => {
     const { message } = z.object({ message: z.string().trim().min(1).max(2000) }).strict().parse(request.body);
     return agent.chat(message);

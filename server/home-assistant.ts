@@ -1,10 +1,20 @@
 import { z } from 'zod';
-import type { Changes, Device, DeviceKind } from '../shared/types.js';
+import type { Changes, Device, DeviceKind, XiaomiDiscovery } from '../shared/types.js';
 import { HubError } from './schema.js';
 
 const stateSchema = z.object({ entity_id: z.string(), state: z.string(), attributes: z.record(z.string(), z.unknown()), last_updated: z.string() });
 type HAState = z.infer<typeof stateSchema>;
 const numeric = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+const xiaomiRegistrySchema = z.array(z.object({
+  entity_id: z.string().min(1).max(200),
+  area: z.string().nullish(), manufacturer: z.string().nullish(), model: z.string().nullish(),
+})).refine((items) => new Set(items.map((item) => item.entity_id)).size === items.length);
+// Fixed, read-only template: registry membership identifies Xiaomi entities even after renaming.
+const xiaomiRegistryTemplate = `{% set ns = namespace(items=[]) %}
+{% for entity in integration_entities('xiaomi_home') %}
+{% set ns.items = ns.items + [{'entity_id': entity, 'area': area_name(entity), 'manufacturer': device_attr(entity, 'manufacturer'), 'model': device_attr(entity, 'model')}] %}
+{% endfor %}
+{{ ns.items | to_json }}`;
 
 export function mapEntity(entity: HAState): Device | null {
   const domain = entity.entity_id.split('.')[0];
@@ -57,6 +67,7 @@ export class HomeAssistant {
     this.url = url.replace(/\/+$/, '');
   }
   private async request(path: string, body?: object): Promise<unknown> {
+    const writesDevice = path.startsWith('services/');
     let response: Response;
     try {
       response = await this.fetcher(`${this.url}/api/${path}`, {
@@ -64,8 +75,9 @@ export class HomeAssistant {
         body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(8000), redirect: 'error',
       });
     } catch {
-      throw new HubError(body ? 'RESULT_UNKNOWN' : 'HA_UNREACHABLE', body ? '指令结果未确认，请同步后检查设备，系统不会自动重发。' : '无法连接 Home Assistant，请检查服务地址和网络。', 502);
+      throw new HubError(writesDevice ? 'RESULT_UNKNOWN' : 'HA_UNREACHABLE', writesDevice ? '指令结果未确认，请同步后检查设备，系统不会自动重发。' : '无法连接 Home Assistant，请检查服务地址和网络。', 502);
     }
+    if (response.status === 403 && path === 'template') throw new HubError('HA_PERMISSION', '发现小米设备需要 Home Assistant 管理员的长期访问令牌，请更新 HA_TOKEN 后重启。', 502);
     if (!response.ok) throw new HubError('HA_REJECTED', response.status === 401 ? 'Home Assistant 令牌失效，请更新服务端配置。' : `Home Assistant 拒绝了请求（${response.status}）。`, 502);
     try { return await response.json(); } catch { throw new HubError('HA_RESPONSE', 'Home Assistant 返回了无效数据，请同步后检查状态。', 502); }
   }
@@ -73,6 +85,27 @@ export class HomeAssistant {
     const parsed = z.array(stateSchema).safeParse(await this.request('states'));
     if (!parsed.success) throw new HubError('HA_RESPONSE', 'Home Assistant 设备数据格式不正确。', 502);
     return parsed.data.map(mapEntity).filter((device): device is Device => device !== null);
+  }
+  async discoverXiaomi(): Promise<XiaomiDiscovery> {
+    const registry = xiaomiRegistrySchema.safeParse(await this.request('template', { template: xiaomiRegistryTemplate }));
+    if (!registry.success) throw new HubError('HA_RESPONSE', '小米设备来源信息无效，请检查 Home Assistant 的官方 Xiaomi Home 集成。', 502);
+    const states = z.array(stateSchema).safeParse(await this.request('states'));
+    if (!states.success) throw new HubError('HA_RESPONSE', 'Home Assistant 设备数据格式不正确。', 502);
+    const byId = new Map(states.data.map((state) => [state.entity_id, state]));
+    const result: XiaomiDiscovery = { devices: [], unsupported: [], total: registry.data.length };
+    for (const metadata of registry.data) {
+      const entity = byId.get(metadata.entity_id);
+      const device = entity ? mapEntity(entity) : null;
+      if (!device) {
+        result.unsupported.push({ entityId: metadata.entity_id,
+          name: typeof entity?.attributes.friendly_name === 'string' ? entity.attributes.friendly_name : metadata.entity_id,
+          reason: entity ? '当前支持灯光、空调、窗帘、开关和传感器，此类型暂未支持。' : '中枢未提供状态，请检查该设备是否已启用。' });
+        continue;
+      }
+      result.devices.push({ ...device, integration: 'xiaomi_home', brand: metadata.manufacturer || '小米生态',
+        protocol: 'Xiaomi Home · HA', model: metadata.model || undefined, room: metadata.area || '未分配' });
+    }
+    return result;
   }
   async control(device: Device, changes: Changes): Promise<Device> {
     const data = { entity_id: device.entityId };
@@ -87,6 +120,6 @@ export class HomeAssistant {
     try { observed = mapEntity(stateSchema.parse(await this.request(`states/${encodeURIComponent(device.entityId!)}`))); }
     catch { throw new HubError('RESULT_UNKNOWN', '指令已发送，但状态回读失败，请同步后检查设备。', 502); }
     if (!observed) throw new HubError('HA_RESPONSE', '设备类型不受支持。', 502);
-    return { ...observed, room: device.room };
+    return { ...device, ...observed, room: device.room, brand: device.brand, protocol: device.protocol };
   }
 }

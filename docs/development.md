@@ -21,6 +21,7 @@ npm start
 
 - 模型：同时设置 AI_API_KEY 与 AI_MODEL，按服务商设置 AI_BASE_URL（到 /v1，不包含 /chat/completions）。模型须支持 tools/function calling。未配置时为本地有限语法；配置后服务失败明确报告，不自动降级。模型会收到设备状态与最近对话。
 - 中枢：同时设置 HA_URL 和长期访问令牌 HA_TOKEN，在“接入与模型”同步。设备初始房间为“未分配”，可在详情修改。硬件须已接入中枢；本平台不执行无线配对。实现依照 [Home Assistant REST API](https://developers.home-assistant.io/docs/api/rest/)，调用 service 并回读，不通过写 states 假装控制硬件。
+- 小米 / 米家：先在 Home Assistant 完成官方 Xiaomi Home 集成授权，再使用“小米 / 米家”入口发现并选择设备；首次导入使用中枢房间及型号。发现需要管理员令牌，步骤和支持范围见[小米接入指南](cookbook/xiaomi-home.md)。
 - 模拟：DEMO_MODE=false 禁止首次演示初始化与新增模拟设备，不删除已有数据。要切换到纯真实设备，使用新的 DATABASE_PATH。
 - 局域网：生产服务设置 HOST=0.0.0.0 和高强度 HUB_API_TOKEN；网页输入相同令牌，仅保存在浏览器会话。默认没有公网部署、权限分级和 TLS 终止；跨不可信网络前需要 HTTPS 与网络访问控制。
 

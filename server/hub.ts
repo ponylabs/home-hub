@@ -1,15 +1,17 @@
 import { randomUUID } from 'node:crypto';
-import type { AuditEvent, ChatMessage, Changes, Command, Device, HomeSnapshot, Scene, SceneResult } from '../shared/types.js';
+import type { AuditEvent, ChatMessage, Changes, Command, Device, HomeSnapshot, Scene, SceneResult, XiaomiDiscovery } from '../shared/types.js';
 import { Store } from './store.js';
 import { HomeAssistant } from './home-assistant.js';
-import { addDeviceSchema, commandSchema, HubError, sceneSchema } from './schema.js';
+import { addDeviceSchema, commandSchema, HubError, sceneSchema, xiaomiImportSchema } from './schema.js';
 import { newDemoDevice } from './seed.js';
 
 export class Hub {
   connection: HomeSnapshot['connection'];
+  xiaomi: HomeSnapshot['xiaomi'];
   private tail: Promise<unknown> = Promise.resolve();
   constructor(readonly store: Store, readonly ha?: HomeAssistant, readonly demo = true) {
     this.connection = { configured: !!ha, status: 'disconnected', message: ha ? '尚未同步设备' : '未配置 Home Assistant' };
+    this.xiaomi = { configured: !!ha, status: 'disconnected', message: ha ? '等待发现或同步小米设备' : '请先配置 Home Assistant' };
     // Cached bridge state is stale until a successful discovery in this process.
     for (const device of store.devices()) if (device.adapter === 'home-assistant') store.put('devices', { ...device, online: false });
   }
@@ -19,7 +21,7 @@ export class Hub {
   async idle() { await this.tail; }
   snapshot(agent: HomeSnapshot['agent']): HomeSnapshot {
     return { devices: this.store.devices(), scenes: this.store.scenes(), events: this.store.list<AuditEvent>('events').reverse().slice(0, 50),
-      messages: this.store.list<ChatMessage>('messages'), connection: this.connection, agent, demo: this.demo };
+      messages: this.store.list<ChatMessage>('messages'), connection: this.connection, xiaomi: this.xiaomi, agent, demo: this.demo };
   }
   validate(input: unknown): { command: Command; device: Device } {
     const command = commandSchema.parse(input);
@@ -89,11 +91,8 @@ export class Hub {
       try {
         const devices = await this.ha.discover();
         const ids = new Set(devices.map((d) => d.id));
-        for (const old of this.store.devices().filter((d) => d.adapter === 'home-assistant')) if (!ids.has(old.id)) this.store.put('devices', { ...old, online: false });
-        for (const device of devices) {
-          const old = this.store.get<Device>('devices', device.id);
-          this.store.put('devices', { ...device, room: old?.room ?? device.room });
-        }
+        const missing = this.store.devices().filter((d) => d.adapter === 'home-assistant' && !ids.has(d.id));
+        this.persistBridgeDevices([...devices, ...missing.map((d) => ({ ...d, online: false }))]);
         this.connection = { configured: true, status: 'connected', message: `已同步 ${devices.length} 个设备` };
         return { count: devices.length };
       } catch (error) {
@@ -101,6 +100,59 @@ export class Hub {
         this.connection = { configured: true, status: 'error', message: error instanceof HubError ? error.message : '同步失败，请检查连接。' };
         throw error;
       }
+    });
+  }
+  private persistBridgeDevices(devices: Device[]) {
+    this.store.db.exec('BEGIN');
+    try {
+      for (const device of devices) {
+        const old = this.store.get<Device>('devices', device.id);
+        // A generic state refresh has no registry metadata; keep previously discovered provenance.
+        const metadata = old?.integration && !device.integration ? { brand: old.brand, protocol: old.protocol } : {};
+        this.store.put('devices', { ...old, ...device, ...metadata, room: old && old.room !== '未分配' ? old.room : device.room });
+      }
+      this.store.db.exec('COMMIT');
+    } catch (error) { this.store.db.exec('ROLLBACK'); throw error; }
+  }
+  private async readXiaomi(): Promise<XiaomiDiscovery> {
+    if (!this.ha) throw new HubError('NOT_CONFIGURED', '请先配置 HA_URL 与 HA_TOKEN，并在 Home Assistant 中完成官方 Xiaomi Home 集成的米家授权。', 409);
+    try {
+      const discovery = await this.ha.discoverXiaomi();
+      this.xiaomi = { configured: true, status: 'connected', message: `发现 ${discovery.devices.length} 项可接入设备，${discovery.unsupported.length} 项暂不可接入` };
+      return discovery;
+    } catch (error) {
+      for (const device of this.store.devices().filter((d) => d.integration === 'xiaomi_home')) this.store.put('devices', { ...device, online: false });
+      this.xiaomi = { configured: true, status: 'error', message: error instanceof HubError ? error.message : '小米设备发现失败，请检查中枢连接。' };
+      throw error;
+    }
+  }
+  discoverXiaomi(): Promise<XiaomiDiscovery> { return this.serialize(() => this.readXiaomi()); }
+  importXiaomi(input: unknown): Promise<{ count: number }> {
+    const { entityIds } = xiaomiImportSchema.parse(input);
+    return this.serialize(async () => {
+      const discovery = await this.readXiaomi();
+      const byId = new Map(discovery.devices.map((device) => [device.entityId, device]));
+      const devices = entityIds.map((id) => {
+        const device = byId.get(id);
+        if (!device) throw new HubError('XIAOMI_SELECTION_CHANGED', '所选设备已变化或不属于可接入的小米设备，请重新发现并选择。', 409);
+        return device;
+      });
+      this.persistBridgeDevices(devices);
+      this.xiaomi.message = `已接入 ${this.store.devices().filter((d) => d.integration === 'xiaomi_home').length} 项小米设备`;
+      return { count: devices.length };
+    });
+  }
+  syncXiaomi(): Promise<{ count: number; offline: number }> {
+    return this.serialize(async () => {
+      const imported = this.store.devices().filter((d) => d.integration === 'xiaomi_home');
+      if (!imported.length) throw new HubError('XIAOMI_NOT_IMPORTED', '请先发现并接入小米设备。', 409);
+      const discovery = await this.readXiaomi();
+      const byId = new Map(discovery.devices.map((device) => [device.id, device]));
+      const devices = imported.map((old) => byId.get(old.id) ?? { ...old, online: false });
+      this.persistBridgeDevices(devices);
+      const offline = devices.filter((device) => !device.online).length;
+      this.xiaomi.message = `已同步 ${devices.length} 项小米设备${offline ? `，${offline} 项离线` : ''}`;
+      return { count: devices.length, offline };
     });
   }
   addDemo(input: unknown) {

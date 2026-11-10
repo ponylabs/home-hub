@@ -9,6 +9,8 @@ export type Device = {
   protocol: string;
   adapter: 'demo' | 'home-assistant';
   entityId?: string;
+  integration?: 'xiaomi_home';
+  model?: string;
   online: boolean;
   capabilities: (keyof Changes)[];
   state: Changes & { currentTemperature?: number; humidity?: number; value?: number; unit?: string };
@@ -26,12 +28,19 @@ export type AuditEvent = {
   detail: string;
 };
 export type ChatMessage = { id: string; role: 'user' | 'assistant'; content: string; time: string; actions?: string[] };
+export type ConnectionState = { configured: boolean; status: 'disconnected' | 'connected' | 'error'; message: string };
+export type XiaomiDiscovery = {
+  devices: Device[];
+  unsupported: { entityId: string; name: string; reason: string }[];
+  total: number;
+};
 export type HomeSnapshot = {
   devices: Device[];
   scenes: Scene[];
   events: AuditEvent[];
   messages: ChatMessage[];
-  connection: { configured: boolean; status: 'disconnected' | 'connected' | 'error'; message: string };
+  connection: ConnectionState;
+  xiaomi: ConnectionState;
   agent: { mode: 'local' | 'model'; model: string | null };
   demo: boolean;
 };
