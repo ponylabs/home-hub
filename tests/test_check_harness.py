@@ -1,10 +1,12 @@
 """验证检查器确实拒绝错误，不以文案匹配冒充业务验证。"""
 import importlib.util
+import os
 import tempfile
 import subprocess
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 SPEC = importlib.util.spec_from_file_location('check_harness', Path(__file__).resolve().parents[1] / 'scripts/check_harness.py')
 MODULE = importlib.util.module_from_spec(SPEC)
@@ -109,6 +111,11 @@ class BundledSkillScope(unittest.TestCase):
 
 class HarnessChecks(unittest.TestCase):
     def setUp(self):
+        # CI 的提交基准属于外层仓库，不能用于测试创建的临时仓库。
+        environment = patch.dict(os.environ)
+        environment.start()
+        self.addCleanup(environment.stop)
+        os.environ.pop('HARNESS_ARCHIVE_BASE_REF', None)
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
@@ -367,6 +374,9 @@ class HarnessChecks(unittest.TestCase):
         self.write('.agents/notes/archived/AGENTS.md', '# 规则\n')
         self.assertEqual(MODULE.check(self.root, seal_archives=True, baseline_ref='0' * 40), [])
         self.assertTrue(MODULE.check(self.root, baseline_ref='does-not-exist'))
+        with patch.dict(os.environ, {'HARNESS_ARCHIVE_BASE_REF': '0' * 40}):
+            self.assertEqual(MODULE.check(self.root), [])
+            self.assertTrue(MODULE.check(self.root, baseline_ref='does-not-exist'))
 
     def test_archive_parent_symlink_is_not_followed(self):
         with tempfile.TemporaryDirectory() as outside:

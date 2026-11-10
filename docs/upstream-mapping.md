@@ -2,6 +2,8 @@
 
 本页保留 Harness Seed 的开发方法来源映射。Home Hub 基于 Harness Seed `1cb7fc55636c587b7c1070b7424f4abec166b2f1`，沿用下列 Skill；六个文档入口与 CI 已转为实际业务用途，运行时 Agent 不属于上游模板提供的实现。
 
+继承的 [Harness 回归测试](../tests/test_check_harness.py)增加临时仓库环境隔离，以适配业务 CI；保留归档冻结断言和检查器读取 CI 基准的行为。
+
 当前对照版本为 DeepSeek Harness `fcc0ad462172522aaf5c93a7b2e01f6b9f0b0159`；最初迁移基线为 `8bd073392eef6f54e921a093b95076248eb08cbb`。这是中文通用适配，不保证与上游完全等价；[来源和完整许可](../THIRD_PARTY_NOTICES.md)必须随改编内容保留。
 
 优先保留上游职责和触发方式，去掉产品专属事实而不去掉关键判断。当前 UI 分级审查等方法来自上游后续版本，不视为原迁移时已有的全部内容。以下记录方法去向与适配边界，不表示全部已通过真实 Agent 场景验收。
