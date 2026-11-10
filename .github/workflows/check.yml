@@ -1,10 +1,10 @@
-name: 检查工程基础
+name: 检查 Home Hub
 on: [push, pull_request]
 permissions:
   contents: read
 jobs:
   check:
-    name: 结构、测试与差异检查
+    name: 业务、构建、Harness 与差异检查
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -12,10 +12,14 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
-      - run: python3 scripts/check_harness.py
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run check
         env:
           HARNESS_ARCHIVE_BASE_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
-      - run: python3 -m unittest discover -s tests -v
       - name: 检查当前版本全部跟踪文件的空白错误
         run: git diff --check "$(git hash-object -t tree /dev/null)" HEAD

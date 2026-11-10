@@ -1,5 +1,9 @@
 # 第三方来源与许可
 
+Home Hub 从 [ponylabs/harness-seed](https://github.com/ponylabs/harness-seed) 的 `1cb7fc55636c587b7c1070b7424f4abec166b2f1` 派生，保留其适用 Skill、Notes 规范、文档契约及检查器。业务代码、运行说明和 CI 在独立项目中维护；未修改或推送模板仓库。
+
+界面依赖 Mantine、React 和 Lucide；服务端及工具依赖 Fastify、Zod、MCP TypeScript SDK 等。具体包和版本以 `package-lock.json` 为准，各依赖许可随 npm 包保留。示例户型 SVG 为本项目创建，未复制用户参考图中的影视、人物或住宅素材。
+
 本仓库的部分 Skill、参考材料和示例由 DeepSeek Harness 内容翻译、改写并去项目专属化而来，不是全部独立原创，也不是 DeepSeek 官方模板。
 
 - 上游：[deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness)。

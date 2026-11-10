@@ -4,6 +4,8 @@
 
 先读 [README](README.md)，再沿目标路径读取适用的子 AGENTS 和模块说明。遵守宿主指令优先级，不假定子目录规则会自动加载；不要全仓加载无关资料。范围以用户当前目标为准，建议不等于实施授权。
 
+本仓库是独立的 Home Hub 业务项目，已从 Harness Seed 初始化。普通功能开发不重新初始化，也不向模板仓库推送业务代码。模块与当前范围见[架构说明](docs/architecture.md)，运行入口见[开发说明](docs/development.md)。
+
 ## 始终适用
 
 - 核实实现、配置和测试再描述事实；发现实现与约束冲突时报告，不擅自改掉约束。
@@ -19,7 +21,7 @@
 
 | 任务或风险 | 入口 |
 | --- | --- |
-| 新项目初始化；维护模板本身不触发 | [初始化](.agents/skills/seek-initialize/SKILL.md) |
+| 仅用户明确要求重新派生新项目时 | [初始化](.agents/skills/seek-initialize/SKILL.md) |
 | 项目事实、结构或文档生命周期 | [文档维护](.agents/skills/seek-doc/SKILL.md) |
 | 文字、注释、提示词的完整性与精简 | [表达标准](.agents/skills/seek-prose/SKILL.md) |
 | Notes 取代、保留、删除与归档 | [Agent Notes](.agents/skills/seek-notes/SKILL.md) |
@@ -43,6 +45,8 @@
 ## 本仓库验证
 
 命令与覆盖范围见 [测试说明](docs/testing.md)。基础检查、Skill 格式和真实 Agent 场景分别报告；不得把前两者通过说成模型始终正确。涉及上游改编时同步[来源与许可](THIRD_PARTY_NOTICES.md)及[迁移映射](docs/upstream-mapping.md)。
+
+交付完整业务变更运行 `npm run check`。网页、对话和 MCP 的设备写入必须经过统一控制服务；新增能力同时维护运行时校验、适配器和拒绝路径测试。模拟数据不得表述为真实设备数据，未知控制结果不得标为成功。基础 UI 复用 Mantine 并遵守[样式说明](docs/web-styling.md)。
 
 ## 普通开发
 

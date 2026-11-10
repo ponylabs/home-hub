@@ -1,36 +1,35 @@
-# Harness Seed
+# 栖居 · Home Hub
 
-面向 AI 协作开发的轻量项目基础模板。它用精简入口、按需加载的成熟工作方法和可执行检查，让新项目逐步形成自己的文档与验证体系，统一文档骨架而不预设业务技术栈或代码目录树。
+本地运行的智能家居管理平台。用同一套设备模型连接手动控制、生活场景与 AI Agent，让不同品牌的设备可以在一个界面中操作。
 
-## 从这里开始
+本项目从 [Harness Seed](https://github.com/ponylabs/harness-seed) 的 `1cb7fc55636c587b7c1070b7424f4abec166b2f1` 独立派生，保留 Agent 开发规范、按需 Skill 和文档检查。模板远程地址已移除，不向模板推送业务改动。Harness 是开发协作基础，家居控制与运行时 Agent 由本项目实现。
 
-- 维护本模板：先读 [AGENTS.md](AGENTS.md)。本仓库已经是一个真实项目，不要在这里初始化示例业务。
-- 创建新项目：复制模板到新的仓库，再要求 Agent：“读取 AGENTS.md 和 seek-initialize，按我的需求初始化这个项目，先确认必要方案。”
-- 开发本模板：[开发说明](docs/development.md)。
-- 了解固定名称与按需目录：[文档约定](docs/AGENTS.md)。
-- 查看方法与边界：[设计说明](docs/architecture.md)。
-- 查看检查方法与覆盖范围：[验证说明](docs/testing.md)。
+## 立即运行
 
-初始化完成后，新项目应替换本 README 为真实项目说明，移除不再适用的模板教程和链接，并同步实际本地验证与 CI。保留适用改编内容时也要保留必要版权与许可。保留可复用 Skill 不等于保留初始化问卷。
+需要 Node.js 22.13+ 和 npm，无需硬件、账号或模型密钥：
 
-## 组成
+```sh
+npm ci
+npm run dev
+```
 
-- 根 AGENTS：全局约束和阅读入口；子 AGENTS 仅为真实存在的局部约束创建。
-- README 与项目文档：用途、边界、契约、操作方法等事实；不复制 Skill 的工作教程。
-- `.agents/skills/`：通用开发与文档工作流，以及按场景加载的错误、测试、UI、性能、发布等专题；入口与触发条件见 AGENTS。
-- `scripts/check_harness.py` 与测试：用 Python 标准库检查六个固定入口、Notes 格式与冻结、Skill 元数据和活跃 Markdown 文件链接，并测试检查器的失败路径。
-- GitHub Actions：执行同一套检查。工作流不等于已配置分支保护，也不保证所有 Agent 自动读取规则。
+打开[本地控制台](http://127.0.0.1:5173/)。试试手动关灯、点击户型中的房间，或发送“观影模式”“关闭客厅主灯”“客厅空调调到26度”。默认设备明确标注为模拟，状态保存到本地 SQLite。
 
-## 本地检查
+## 当前能力
 
-需要 Python 3.10 或以上，无第三方 Python 依赖。精确命令、覆盖边界和验证记录统一见 [测试说明](docs/testing.md)；开发环境与变更流程见 [开发说明](docs/development.md)。
+- 深色三栏控制面板：环境与导航、示例户型、设备速控与对话；基础控件复用 Mantine。
+- 灯光、空调、窗帘、插座和温湿度模拟设备；可添加设备、修改房间、搜索与筛选。
+- 预置场景及保存当前状态的自定义场景；操作记录区分来源和成功、失败、待确认结果。
+- 本地有限指令解析；配置支持工具调用的 Chat Completions 兼容模型后启用自然语言对话。
+- Home Assistant 桥接适配器、MCP 工具入口；网页与 Agent 共用能力校验和控制服务。
 
-## Agent 兼容性
+首版完成无硬件运行链路。真实 Home Assistant、真实模型服务尚未联调；模拟品牌与协议名不代表已实现原生 Zigbee/Matter/蓝牙配对。示例户型不对应用户真实住宅。
 
-使用 `.agents/skills/<名称>/SKILL.md` 作为唯一技能来源。模板自带 Skill 统一使用 `seek-` 前缀，目录名与 `SKILL.md` 的 `name` 一致；上游名称只用于来源说明，不改变上游原名。支持项目 Skill 的宿主可以发现它们；其他宿主需要显式读取 AGENTS 指向的文件。没有宣称所有工具的自动发现、嵌套规则加载或调用行为一致。若需要工具专用入口，新增薄适配，不复制另一套规范正文。
+## 项目入口
 
-## 来源与许可
+- [开发说明](docs/development.md)：生产运行、模型/中枢配置、MCP 接入与备份。
+- [架构与后续阶段](docs/architecture.md)：模块边界、控制保证和当前限制。
+- [测试说明](docs/testing.md)：检查命令与验证边界。
+- [样式约定](docs/web-styling.md)、[形状规范](docs/ui-radius.md)、[Agent 约定](AGENTS.md)与[来源许可](THIRD_PARTY_NOTICES.md)。
 
-本轮 Skill 依据 [DeepSeek Harness 固定版本](https://github.com/deepseek-ai/deepseek-harness/tree/fcc0ad462172522aaf5c93a7b2e01f6b9f0b0159) 做中文翻译和适配。保留通用判断细节，移除产品专属命令与强制技术假设，不是官方模板，也不声称完全等价。
-
-独立 Skill 入口与全部 22 个上游 Skill 的对应去向见[迁移映射](docs/upstream-mapping.md)，版权和 MIT 原文见[第三方声明](THIRD_PARTY_NOTICES.md)。本仓库自行新增部分的统一开源许可尚待所有者决定，不能将公开可见理解为任意再分发许可。
+完整本地检查为 `npm run check`，Harness 检查另需 Python 3.10+。[项目仓库](https://github.com/ponylabs/home-hub)的 GitHub Actions 已配置业务测试、构建与文档检查，运行结果见 [Actions](https://github.com/ponylabs/home-hub/actions)。
